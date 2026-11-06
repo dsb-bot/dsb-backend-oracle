@@ -1,0 +1,34 @@
+services:
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATA_DIRECTORY: /data
+      DATABASE_PATH: /data/dsb.sqlite3
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - dsb-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    build: .
+    profiles: ["sync"]
+    command: ["python", "-m", "dsb_bot.worker"]
+    env_file: .env
+    environment:
+      DATA_DIRECTORY: /data
+      DATABASE_PATH: /data/dsb.sqlite3
+    volumes:
+      - dsb-data:/data
+
+volumes:
+  dsb-data:
