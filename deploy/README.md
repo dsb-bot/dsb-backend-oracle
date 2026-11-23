@@ -8,12 +8,12 @@ The current Always Free allocation is 1,500 OCPU-hours and 9,000 GB-hours per mo
 
 For this service, one A1 VM with 1 OCPU, 6 GB RAM, Ubuntu ARM64, and a 50 GB boot volume is a reasonable starting point. The Docker image and CI are configured to support ARM64. Confirm the selected image and shape are marked Always Free in the OCI console; do not create paid resources to work around regional capacity without reviewing the cost first.
 
-The existing frontend is served from the same OCI host by Caddy. Keep its checkout as a sibling directory at `/opt/dsb-beta` next to `/opt/dsb-backend-oracle`; Compose mounts that checkout read-only into Caddy. Caddy serves the site at the root domain and proxies `/api/*` and `/healthz` to FastAPI on the private Compose network. Point a DNS name you control at the VM's public IP and allow TCP ports 80/443 in both OCI network security rules and the VM firewall. Set `.env` `API_DOMAIN` to that DNS name. The frontend uses the same origin for its API, so it does not need a separate API hostname.
+The existing frontend is served from the same OCI host by Caddy. Keep its checkout as a sibling directory at `/opt/dsb-beta` next to `/opt/dsb-backend-oracle`; Compose mounts that checkout read-only into Caddy. Caddy serves the site at the root domain and proxies `/api/*` and `/healthz` to FastAPI on the private Compose network. A domain is optional: Caddy 2.11.4 can request a publicly trusted Let's Encrypt IP certificate with the `shortlived` ACME profile. Set `.env` `API_DOMAIN` and `FRONTEND_ORIGIN` to the VM's public IPv4 address (without a scheme in `API_DOMAIN`). Allow TCP ports 80/443 in both OCI network security rules and the VM firewall. The certificate is valid for 160 hours, so keep Caddy running for automatic renewal. The frontend uses the same origin for its API, so it does not need a separate API hostname.
 
 ## Prerequisites
 
 - A supported Linux host with Docker Engine and the Docker Compose plugin.
-- A DNS name for the API pointing to the host; inbound TCP 80/443 must be allowed for Caddy HTTPS.
+- A public IPv4 address; Caddy 2.11.4 and inbound TCP 80/443 are required for trusted HTTPS.
 - Verified DSB behavior from sanitized authenticated success, empty, authentication-failure, and transient-failure samples.
 - A reviewed API/frontend contract and a separate frontend release plan.
 - DSB credentials and optional Discord webhook secrets provisioned on the host only.

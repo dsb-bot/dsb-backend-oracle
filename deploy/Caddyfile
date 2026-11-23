@@ -1,6 +1,12 @@
 {$API_DOMAIN} {
     encode zstd gzip
 
+    tls {
+        issuer acme {
+            profile shortlived
+        }
+    }
+
     handle /api/* {
         reverse_proxy api:8000
     }

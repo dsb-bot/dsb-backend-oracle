@@ -3,10 +3,10 @@ services:
     restart: unless-stopped
 
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.11.4-alpine
     restart: unless-stopped
     environment:
-      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in the deployment .env file}
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN (public IPv4) in the deployment .env file}
     ports:
       - "80:80"
       - "443:443"
