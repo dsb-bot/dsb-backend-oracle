@@ -1,0 +1,11 @@
+[Unit]
+Description=Create a daily DSB database backup
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=15m
+Unit=dsb-backup.service
+
+[Install]
+WantedBy=timers.target

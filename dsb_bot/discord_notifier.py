@@ -66,7 +66,11 @@ class DiscordNotifier:
         try:
             response = self._client.post(url, json=payload)
             response.raise_for_status()
-        except httpx.HTTPError:
-            logger.exception("Discord %s notification failed", event)
+        except httpx.HTTPError as exc:
+            # HTTP client exceptions may include the webhook URL, which contains
+            # its bearer-like secret token. Log only the exception type.
+            logger.warning(
+                "Discord %s notification failed (%s)", event, type(exc).__name__
+            )
             return False
         return True

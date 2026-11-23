@@ -1,0 +1,12 @@
+[Unit]
+Description=Synchronize DSB schedules once
+Requires=docker.service
+After=docker.service
+ConditionPathExists=/opt/dsb-backend-oracle/.env
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/dsb-backend-oracle
+ExecStart=/usr/bin/docker compose --profile sync run --rm worker
+TimeoutStartSec=4min
+UMask=0077

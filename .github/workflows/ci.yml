@@ -1,0 +1,37 @@
+name: Backend CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m pytest
+      - run: cp .env.example .env
+      - run: docker compose -f compose.yaml -f compose.production.yaml config --quiet
+        env:
+          API_DOMAIN: api.example.invalid
+      - run: rm .env
+      - run: bash -n deploy/backup.sh deploy/restore.sh
+      - run: >-
+          docker run --rm -e API_DOMAIN=api.example.invalid
+          -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro"
+          caddy:2-alpine caddy validate
+          --config /etc/caddy/Caddyfile --adapter caddyfile
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - run: docker buildx build --platform linux/amd64 --load --tag dsb-backend-oracle:ci-amd64 .
+      - run: docker buildx build --platform linux/arm64 --load --tag dsb-backend-oracle:ci-arm64 .

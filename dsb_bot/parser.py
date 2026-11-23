@@ -1,5 +1,6 @@
 import re
 import codecs
+from html import escape
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -193,43 +194,30 @@ def _convert_teacher_table(source_table) -> str:
     hour_index = headers.index("Stunde")
     data_rows.sort(key=lambda row: (_class_sort_key(row[class_index]), _hour_sort_key(row[hour_index])))
 
-    output = BeautifulSoup("<table class='mon_list'></table>", "lxml").table
-    tbody = BeautifulSoup("", "lxml").new_tag("tbody")
-    header_row = BeautifulSoup("", "lxml").new_tag("tr")
-    header_row["class"] = ["list"]
+    header_cells = []
     for index, label in enumerate(STUDENT_HEADERS):
-        th = BeautifulSoup("", "lxml").new_tag("th", align="center")
-        th["class"] = ["list"]
-        if index == 0:
-            bold = BeautifulSoup("", "lxml").new_tag("b")
-            bold.string = label
-            th.append(bold)
-        else:
-            th.string = label
-        header_row.append(th)
-    tbody.append(header_row)
+        value = f"<b>{escape(label)}</b>" if index == 0 else escape(label)
+        header_cells.append(
+            f'<th align="center" class="list">{value}</th>'
+        )
+    output_rows = [f'<tr class="list">{"".join(header_cells)}</tr>']
 
     for row_number, values in enumerate(data_rows):
-        output_row = BeautifulSoup("", "lxml").new_tag("tr")
-        output_row["class"] = ["list", "odd" if row_number % 2 == 0 else "even"]
+        cells = []
+        row_class = "odd" if row_number % 2 == 0 else "even"
         activity = values[headers.index("Art")]
         for column_number, source_index in enumerate(output_columns):
-            cell = BeautifulSoup("", "lxml").new_tag("td", align="center")
-            cell["class"] = ["list"]
             text = values[source_index]
             if activity == "Entfall" and column_number in {2, 4, 5}:
                 text = "---"
             if column_number == 0:
-                bold = BeautifulSoup("", "lxml").new_tag("b")
-                bold.string = text
-                cell.append(bold)
+                value = f"<b>{escape(text)}</b>"
             else:
-                cell.string = text
-            output_row.append(cell)
-        tbody.append(output_row)
+                value = escape(text)
+            cells.append(f'<td align="center" class="list">{value}</td>')
+        output_rows.append(f'<tr class="list {row_class}">{"".join(cells)}</tr>')
 
-    output.append(tbody)
-    return str(output)
+    return f'<table class="mon_list"><tbody>{"".join(output_rows)}</tbody></table>'
 
 
 def _parse_html(body: bytes, content_type: str | None) -> BeautifulSoup:

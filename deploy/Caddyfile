@@ -1,0 +1,17 @@
+{$API_DOMAIN} {
+    encode zstd gzip
+
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    handle /healthz {
+        reverse_proxy api:8000
+    }
+
+    handle {
+        root * /srv/frontend
+        try_files {path} {path}/ /index.html
+        file_server
+    }
+}

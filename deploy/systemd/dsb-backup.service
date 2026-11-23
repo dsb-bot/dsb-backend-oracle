@@ -1,0 +1,16 @@
+[Unit]
+Description=Create a consistent local DSB SQLite backup
+Requires=docker.service
+After=docker.service
+ConditionPathExists=/opt/dsb-backend-oracle/.env
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/dsb-backend-oracle
+EnvironmentFile=-/etc/dsb-bot/backup.env
+Environment=REQUIRE_OFFSITE_BACKUP=1
+Environment=COMPOSE_FILE=compose.yaml:compose.production.yaml
+ExecStartPre=/usr/bin/docker compose up -d api
+ExecStart=/opt/dsb-backend-oracle/deploy/backup.sh /var/backups/dsb-backend-oracle
+TimeoutStartSec=5min
+UMask=0077

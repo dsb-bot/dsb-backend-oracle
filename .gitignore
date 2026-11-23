@@ -1,6 +1,6 @@
 
-.github/
 agent-docs/
+captures/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -54,6 +54,7 @@ coverage.xml
 *.lcov
 .hypothesis/
 .pytest_cache/
+.pytest-tmp/
 cover/
 
 # Translations

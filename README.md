@@ -35,7 +35,37 @@ The API is available at `http://localhost:8000`. To run one synchronization manu
 docker compose --profile sync run --rm worker
 ```
 
-The worker performs one run and exits. It is not automatically scheduled locally; the planned OCI host timer is a later deployment task. Do not run this command against DSB until credentials and the current DSB response behavior have been verified.
+The worker performs one run and exits. It is not automatically scheduled by local Compose; Linux host timer templates are provided under `deploy/systemd/`. Do not run this command against DSB until credentials and the current DSB response behavior have been verified.
+
+For a Linux-host deployment layout with Caddy, a five-minute systemd worker timer, and a daily SQLite backup, see [deploy/README.md](deploy/README.md). These files do not provision OCI resources or an off-instance backup destination.
+
+## Historical archive import
+
+The importer validates date-named HTML files before writing anything. It defaults to a dry run and requires an explicit provenance choice because the legacy archive may contain both original and converted schedules. Use `--source` only after confirming every file has that provenance. For a mixed archive, create a CSV that assigns every date:
+
+```csv
+date,source
+2025-08-27,student
+2026-11-13,teacher_converted
+```
+
+The dates above are examples only; do not infer provenance from age or formatting. Then run:
+
+```sh
+python -m dsb_bot.archive_import ./plans \
+  --database ./data/dsb.sqlite3 \
+  --manifest ./archive-sources.csv
+```
+
+For a confirmed single-source archive, the shorter form is:
+
+```sh
+python -m dsb_bot.archive_import ./plans \
+  --database ./data/dsb.sqlite3 \
+  --source teacher_converted
+```
+
+After confirming every date's provenance and reviewing the validation count, repeat with `--apply`. Student plans already in SQLite remain protected from converted-plan imports. Keep the existing frontend pointed at its current source until archive coverage and cutover have been verified.
 
 ## API
 
@@ -49,8 +79,8 @@ The API never returns the internal schedule source. Original student HTML is del
 
 ## DSB protocol status
 
-The request/response decoder currently follows the existing `dsb_client.py` implementation. Its expected gzip/Base64 JSON envelope has not been confirmed against a live authenticated DSB response. The worker distinguishes a successful empty menu from transport, HTTP, decoding and DSB-result failures, but production readiness still requires sanitized successful, empty and failed response samples. Never put DSB credentials in source control or send them in chat.
+The request/response decoder currently follows the existing `dsb_client.py` implementation. Its expected gzip/Base64 JSON envelope has not been confirmed against a live authenticated DSB response. The worker distinguishes a successful empty menu from transport, HTTP, decoding and DSB-result failures, but production readiness still requires sanitized successful, empty and failed response samples. See [tools/README.md](tools/README.md) for a local capture helper. Never put DSB credentials in source control or send them in chat.
 
 ## Data and deployment
 
-SQLite and schedule bodies live in `DATA_DIRECTORY` (default `/data` in Compose). Use a persistent volume for deployment. OCI provisioning, public exposure, HTTPS, scheduled execution, backups and frontend cutover are intentionally not performed by this local implementation.
+SQLite and schedule bodies live in `DATA_DIRECTORY` (default `/data` in Compose). Use a persistent volume for deployment. The deployment templates target OCI Always Free Ampere A1 (ARM64), with Caddy HTTPS, a scheduled worker, and SQLite backups. OCI resources, public DNS/firewall access, secrets, backup bucket, and frontend cutover still need to be configured in the account; see [deploy/README.md](deploy/README.md).
