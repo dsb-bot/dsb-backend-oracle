@@ -157,6 +157,10 @@ activemq-data/
 # Environments
 .env
 .envrc
+.wrangler/
+.wrangler-out/
+.dev.vars
+node_modules/
 .venv
 env/
 venv/

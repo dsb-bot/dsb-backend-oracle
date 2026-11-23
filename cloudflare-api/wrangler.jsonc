@@ -1,0 +1,18 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "dsb-bot-api",
+	"main": "src/index.js",
+	"compatibility_date": "2026-11-23",
+	"workers_dev": true,
+  "preview_urls": false,
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "dsb-bot-api",
+			"database_id": "fb82a3e1-60b1-43ce-89f8-f8d48ab0838b"
+		}
+	]
+}

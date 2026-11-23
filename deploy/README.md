@@ -14,7 +14,7 @@ The existing frontend is served from the same OCI host by Caddy. Keep its checko
 
 - A supported Linux host with Docker Engine and the Docker Compose plugin.
 - A public IPv4 address; Caddy 2.11.4 and inbound TCP 80/443 are required for trusted HTTPS.
-- Verified DSB behavior from sanitized authenticated success, empty, authentication-failure, and transient-failure samples.
+- A successful authenticated sync has been observed for both configured accounts. The empty-result, authentication-failure, and transient-failure paths still need review before recurring production operation.
 - A reviewed API/frontend contract and a separate frontend release plan.
 - DSB credentials and optional Discord webhook secrets provisioned on the host only.
 
@@ -29,7 +29,7 @@ The existing frontend is served from the same OCI host by Caddy. Keep its checko
    docker compose -f compose.yaml -f compose.production.yaml up -d --build api caddy
    ```
 
-5. Check `https://$API_DOMAIN/healthz`, then install and enable the scheduled worker:
+5. Check `https://$API_DOMAIN/healthz` and run one controlled worker invocation. Inspect its status and the public plan dates before enabling recurring synchronization. Keep the timer disabled until the empty-result and failure paths, notification behavior, and monitoring have been reviewed. When approved, install and enable it:
 
    ```sh
    install -m 0644 deploy/systemd/dsb-sync.service /etc/systemd/system/

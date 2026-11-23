@@ -3,6 +3,7 @@ import logging
 import sys
 from datetime import datetime, timezone
 
+from dsb_bot.cloudflare_publisher import CloudflarePublisher
 from dsb_bot.config import Settings
 from dsb_bot.discord_notifier import DiscordNotifier
 from dsb_bot.dsb_client import DSBClient
@@ -15,6 +16,9 @@ def main() -> int:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    # HTTP client INFO logs include full request URLs; Discord webhook URLs
+    # contain bearer-like tokens, so keep those URLs out of worker logs.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     settings = Settings.from_env()
     try:
         settings.validate_worker()
@@ -35,12 +39,33 @@ def main() -> int:
         settings.discord_plans_webhook,
         settings.discord_ping_role_id,
     )
+    publisher = None
+    if settings.cloudflare_api_url and settings.cloudflare_publish_token:
+        publisher = CloudflarePublisher(
+            settings.cloudflare_api_url, settings.cloudflare_publish_token
+        )
+    cloudflare_status = "disabled" if publisher is None else "success"
     try:
         result = Synchronizer(
             repository,
             student_client=student_client,
             teacher_client=teacher_client,
         ).run_once()
+        if publisher is not None:
+            try:
+                publisher.publish_pending(
+                    repository,
+                    last_successful_sync=(
+                        result.finished_at.isoformat()
+                        if result.status == "success"
+                        else None
+                    ),
+                )
+            except Exception:
+                cloudflare_status = "failed"
+                logging.getLogger(__name__).exception(
+                    "Cloudflare publication failed; queued plans will be retried"
+                )
         if result.changed_dates:
             plans = [
                 (target.isoformat(), plan.title)
@@ -58,18 +83,21 @@ def main() -> int:
                     "status": result.status,
                     "student_status": result.student_status,
                     "teacher_status": result.teacher_status,
+                    "cloudflare_status": cloudflare_status,
                     "changed_dates": [item.isoformat() for item in result.changed_dates],
                     "errors": list(result.errors),
                 },
                 ensure_ascii=False,
             )
         )
-        return 1 if result.status == "failed" else 0
+        return 1 if result.status == "failed" or cloudflare_status == "failed" else 0
     finally:
         student_client.close()
         if teacher_client is not None:
             teacher_client.close()
         notifier.close()
+        if publisher is not None:
+            publisher.close()
 
 
 if __name__ == "__main__":

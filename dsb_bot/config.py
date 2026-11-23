@@ -18,6 +18,8 @@ class Settings:
     discord_warning_webhook: str | None
     discord_plans_webhook: str | None
     discord_ping_role_id: str | None
+    cloudflare_api_url: str | None = None
+    cloudflare_publish_token: str | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -37,6 +39,8 @@ class Settings:
             discord_warning_webhook=os.getenv("DISCORD_WEBHOOK_WARN") or None,
             discord_plans_webhook=os.getenv("DISCORD_WEBHOOK_PLANS") or None,
             discord_ping_role_id=os.getenv("DISCORD_PING_ROLE_ID") or None,
+            cloudflare_api_url=os.getenv("CLOUDFLARE_API_URL") or None,
+            cloudflare_publish_token=os.getenv("CLOUDFLARE_PUBLISH_TOKEN") or None,
         )
 
     def validate_worker(self) -> None:
@@ -53,4 +57,8 @@ class Settings:
         if bool(self.dsb_teacher_username) != bool(self.dsb_teacher_password):
             raise ValueError(
                 "DSB_TEACHER_USER and DSB_TEACHER_PASS must either both be set or both be empty"
+            )
+        if bool(self.cloudflare_api_url) != bool(self.cloudflare_publish_token):
+            raise ValueError(
+                "CLOUDFLARE_API_URL and CLOUDFLARE_PUBLISH_TOKEN must either both be set or both be empty"
             )

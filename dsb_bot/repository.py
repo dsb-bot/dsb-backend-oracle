@@ -61,6 +61,10 @@ class ScheduleRepository:
                     name TEXT PRIMARY KEY,
                     last_sent_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS publish_queue (
+                    date TEXT PRIMARY KEY REFERENCES plans(date) ON DELETE CASCADE,
+                    queued_at TEXT NOT NULL
+                );
                 """
             )
 
@@ -115,6 +119,13 @@ class ScheduleRepository:
                     updated_at,
                 ),
             )
+            connection.execute(
+                """
+                INSERT INTO publish_queue (date, queued_at) VALUES (?, ?)
+                ON CONFLICT(date) DO UPDATE SET queued_at = excluded.queued_at
+                """,
+                (candidate.date.isoformat(), updated_at),
+            )
             return True
 
     def get(self, target_date: date) -> StoredPlan | None:
@@ -145,6 +156,39 @@ class ScheduleRepository:
     def count(self) -> int:
         with self._connection() as connection:
             return int(connection.execute("SELECT COUNT(*) FROM plans").fetchone()[0])
+
+    def enqueue_all_for_publication(self) -> None:
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO publish_queue (date, queued_at)
+                SELECT date, updated_at FROM plans
+                """
+            )
+
+    def pending_publication(self, limit: int = 5) -> list[StoredPlan]:
+        if not 1 <= limit <= 50:
+            raise ValueError("Publication batch size must be between 1 and 50")
+        with self._connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT plans.* FROM plans
+                JOIN publish_queue ON publish_queue.date = plans.date
+                ORDER BY publish_queue.queued_at, plans.date
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [self._stored_plan(row) for row in rows]
+
+    def acknowledge_published(self, plans: list[StoredPlan]) -> None:
+        if not plans:
+            return
+        with self._connection() as connection:
+            connection.executemany(
+                "DELETE FROM publish_queue WHERE date = ? AND queued_at = ?",
+                [(plan.date.isoformat(), plan.updated_at.isoformat()) for plan in plans],
+            )
 
     def last_successful_sync(self) -> str | None:
         with self._connection() as connection:
