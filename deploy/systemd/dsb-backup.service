@@ -11,6 +11,6 @@ EnvironmentFile=-/etc/dsb-bot/backup.env
 Environment=REQUIRE_OFFSITE_BACKUP=1
 Environment=COMPOSE_FILE=compose.yaml:compose.production.yaml
 ExecStartPre=/usr/bin/docker compose up -d api
-ExecStart=/opt/dsb-backend-oracle/deploy/backup.sh /var/backups/dsb-backend-oracle
+ExecStart=/usr/bin/bash /opt/dsb-backend-oracle/deploy/backup.sh /var/backups/dsb-backend-oracle
 TimeoutStartSec=5min
 UMask=0077

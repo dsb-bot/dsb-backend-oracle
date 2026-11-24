@@ -7,6 +7,6 @@ ConditionPathExists=/opt/dsb-backend-oracle/.env
 [Service]
 Type=oneshot
 WorkingDirectory=/opt/dsb-backend-oracle
-ExecStart=/usr/bin/docker compose --profile sync run --rm worker
+ExecStart=/usr/bin/docker compose -f compose.yaml -f compose.production.yaml --profile sync run --rm --no-deps worker
 TimeoutStartSec=4min
 UMask=0077

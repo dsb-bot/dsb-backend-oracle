@@ -8,7 +8,7 @@ The current Always Free allocation is 1,500 OCPU-hours and 9,000 GB-hours per mo
 
 For this service, one A1 VM with 1 OCPU, 6 GB RAM, Ubuntu ARM64, and a 50 GB boot volume is a reasonable starting point. The Docker image and CI are configured to support ARM64. Confirm the selected image and shape are marked Always Free in the OCI console; do not create paid resources to work around regional capacity without reviewing the cost first.
 
-The existing frontend is served from the same OCI host by Caddy. Keep its checkout as a sibling directory at `/opt/dsb-beta` next to `/opt/dsb-backend-oracle`; Compose mounts that checkout read-only into Caddy. Caddy serves the site at the root domain and proxies `/api/*` and `/healthz` to FastAPI on the private Compose network. A domain is optional: Caddy 2.11.4 can request a publicly trusted Let's Encrypt IP certificate with the `shortlived` ACME profile. Set `.env` `API_DOMAIN` and `FRONTEND_ORIGIN` to the VM's public IPv4 address (without a scheme in `API_DOMAIN`). Allow TCP ports 80/443 in both OCI network security rules and the VM firewall. The certificate is valid for 160 hours, so keep Caddy running for automatic renewal. The frontend uses the same origin for its API, so it does not need a separate API hostname.
+OCI is the DSB reader and source-of-truth database; Cloudflare Worker + EU D1 is the public read-only API. The Worker has a stable `workers.dev` URL, so no custom domain is needed for API delivery. Caddy can continue to serve an optional frontend copy and `/healthz`, but `/api/*` is not proxied from OCI. The existing GitHub Pages frontend must set `window.DSB_API_BASE_URL` to the Worker URL.
 
 ## Prerequisites
 
@@ -23,13 +23,13 @@ The existing frontend is served from the same OCI host by Caddy. Keep its checko
 1. Clone this repository to `/opt/dsb-backend-oracle` and the current frontend checkout to `/opt/dsb-beta`; check out the reviewed release in each.
 2. From the backend directory, create `.env` from `.env.example`; set `API_DOMAIN`, DSB credentials, and any notification secrets. Set `FRONTEND_ORIGIN` to `https://<API_DOMAIN>`. Restrict the file with `chmod 600 .env`.
 3. Confirm `/data` is backed by the named Docker volume and ensure the VM has enough persistent disk space.
-4. Start the API and HTTPS proxy:
+4. Start the OCI API worker and optional frontend/HTTPS health host. The public API is deployed separately to Cloudflare; do not expose FastAPI as the public frontend API:
 
    ```sh
    docker compose -f compose.yaml -f compose.production.yaml up -d --build api caddy
    ```
 
-5. Check `https://$API_DOMAIN/healthz` and run one controlled worker invocation. Inspect its status and the public plan dates before enabling recurring synchronization. Keep the timer disabled until the empty-result and failure paths, notification behavior, and monitoring have been reviewed. When approved, install and enable it:
+5. Check the Cloudflare Worker `/healthz` and plan routes. Run the OCI sync worker manually and confirm its outbox publishes to D1. On the current staging host, `dsb-sync.timer` is enabled every five minutes and its first scheduled run succeeded on 2026-11-24. For a new environment, review the empty-result and failure paths, notification behavior, and monitoring before enabling the timer:
 
    ```sh
    install -m 0644 deploy/systemd/dsb-sync.service /etc/systemd/system/
@@ -43,6 +43,8 @@ The existing frontend is served from the same OCI host by Caddy. Keep its checko
 ## Backups
 
 `deploy/backup.sh` uses SQLite's online backup API, verifies the snapshot, and keeps 30 days of local copies. The systemd backup service requires an offsite destination. For OCI, install the OCI CLI on the host, enable instance principals for the VM, create a private Object Storage bucket, and set `OCI_BACKUP_BUCKET=<bucket-name>` in `/etc/dsb-bot/backup.env`; do not put API keys in this file. A bucket-scoped create-only policy can follow this pattern:
+
+On the current OCI staging host, the daily timer is enabled and uploads to private bucket `dsb-bot-backups` using an instance-specific dynamic group. A bucket-scoped lifecycle policy deletes backup files after 30 days. The first uploaded snapshot passed SQLite integrity and OCI checksum verification; a restore rehearsal is still outstanding.
 
 ```text
 Allow dynamic-group <DSB_INSTANCE_GROUP> to manage objects in compartment <BACKUP_COMPARTMENT> where all {target.bucket.name = '<BUCKET_NAME>', request.permission = 'OBJECT_CREATE'}
@@ -69,7 +71,7 @@ Keep the existing frontend data source available during staging. Compare backend
 
 ## Existing frontend configuration
 
-The frontend repo remains separate at `v4-oracle/dsb-beta`, but Caddy serves it on the OCI host. `assets/js/apiConfig.js` uses `window.location.origin`, so the page and API share the deployment hostname. Test the plan list, historical view, and opening an HTML plan at the HTTPS site before considering the deployment live.
+The frontend repo remains separate at `v4-oracle/dsb-beta`. Set `assets/js/apiConfig.js` `window.DSB_API_BASE_URL` to the deployed Worker origin and publish the frontend release. The Worker allows public GET CORS requests. Test current plans, historical views, and opening HTML plans from the actual frontend origin.
 ## Historical data migration
 
 The preserved HTML plans are historical reference data and remain out of Git because they may contain student information. For staging only, transfer the archive to the host over a protected channel into a private directory outside the web root. Grant the API container's UID `10001` read access while keeping directories and files private. Remove the temporary copy after a verified import and backup. The reviewed source manifest is tracked at `migrations/archive-sources.csv`.
