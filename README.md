@@ -65,7 +65,7 @@ python -m dsb_bot.archive_import ./plans \
   --source teacher_converted
 ```
 
-After confirming every date's provenance and reviewing the validation count, repeat with `--apply`. Student plans already in SQLite remain protected from converted-plan imports. The tracked manifest currently covers 225 non-empty plans; the updated local archive has 12 additional non-empty dates without provenance entries. Do not apply or publish those dates until their source is verified and the dry run validates the complete archive. Keep the existing frontend pointed at its current source until archive coverage and cutover have been verified.
+After confirming every date's provenance and reviewing the validation count, repeat with `--apply`. Student plans already in SQLite remain protected from converted-plan imports. The tracked manifest now covers all 237 non-empty plans in the local archive: 227 student plans and 10 converted teacher plans. The empty `2026-06-12.html` placeholder is skipped. The complete archive passes the importer dry run. Historical HTML may contain student information; review and sanitize it before publishing it to any public API. Keep the existing frontend pointed at its current source until archive coverage and cutover have been verified.
 
 ## API
 
