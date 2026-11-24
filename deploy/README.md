@@ -44,7 +44,7 @@ OCI is the DSB reader and source-of-truth database; Cloudflare Worker + EU D1 is
 
 `deploy/backup.sh` uses SQLite's online backup API, verifies the snapshot, and keeps 30 days of local copies. The systemd backup service requires an offsite destination. For OCI, install the OCI CLI on the host, enable instance principals for the VM, create a private Object Storage bucket, and set `OCI_BACKUP_BUCKET=<bucket-name>` in `/etc/dsb-bot/backup.env`; do not put API keys in this file. A bucket-scoped create-only policy can follow this pattern:
 
-On the current OCI staging host, the daily timer is enabled and uploads to private bucket `dsb-bot-backups` using an instance-specific dynamic group. A bucket-scoped lifecycle policy deletes backup files after 30 days. The first uploaded snapshot passed SQLite integrity and OCI checksum verification; a restore rehearsal is still outstanding.
+On the current OCI staging host, the daily timer is enabled and uploads to private bucket `dsb-bot-backups` using an instance-specific dynamic group. A bucket-scoped lifecycle policy deletes backup files after 30 days. The first uploaded snapshot passed SQLite integrity and OCI checksum verification; an isolated restored copy also passed SQLite integrity without changing the live database.
 
 ```text
 Allow dynamic-group <DSB_INSTANCE_GROUP> to manage objects in compartment <BACKUP_COMPARTMENT> where all {target.bucket.name = '<BUCKET_NAME>', request.permission = 'OBJECT_CREATE'}
