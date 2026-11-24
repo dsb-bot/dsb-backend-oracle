@@ -12,13 +12,14 @@ The existing GitHub Pages frontend is a separate, substantially implemented proj
 - A private Standard-tier Object Storage bucket, instance-specific Dynamic Group, and bucket-scoped create-only policy are configured. The OCI CLI runs in `/opt/oci-cli` using Instance Principals. The daily backup timer is enabled; its first manual run passed SQLite integrity and OCI checksum verification for a 192,512-byte snapshot. An isolated copy of that object also passed `PRAGMA integrity_check`; the production database was not altered. A bucket-scoped Object Storage lifecycle policy expires `dsb-*.sqlite3` objects after 30 days.
 - The supplied Discord webhook is configured for both plan updates and sync warnings in the OCI `.env` (mode 600); the supplied role is mentioned only by warning messages. No test post was sent, so delivery remains unverified until a real notification event.
 - DSB credentials remain on OCI. Cloudflare must receive only the publishing token and finalized student-compatible plan records, never DSB credentials or Discord webhook values.
-- Historical archive import is dry-run-first. The confirmed manifest attributes 219 archived plans to `student` and six dates (2026-11-03, 2026-11-04, 2026-11-10 through 13) to `teacher_converted`; dry-run validated 225 plans and skipped one empty placeholder. No production database has been migrated.
+- Historical archive import is dry-run-first. The confirmed manifest attributes 219 archived plans to `student` and six dates (2026-11-03, 2026-11-04, 2026-11-10 through 13) to `teacher_converted`; dry-run validated 225 plans and skipped one empty placeholder. The updated local archive has 12 additional non-empty dates not classified in the manifest, so the complete archive cannot yet be safely imported or published. No production database has been migrated.
 
 ## Remaining for hardened production operation
 
-1. Verify current and historical frontend views against the live Worker. The API config was pushed to `dsb-beta/main` in commit `bcf3638`; GitHub Pages now serves the Cloudflare URL.
-2. Confirm Discord delivery on the first real plan change or sync warning; no synthetic message or failure was sent.
-3. Capture and review naturally observed genuinely empty, authentication-failure, and transient-failure responses; these cases remain a DSB verification gap.
+1. Assign and verify provenance for the 12 newly added archive plans, then rerun the complete dry run before publication.
+2. Verify current and historical frontend views against the live Worker. The frontend source selection and cookie migration changes are local and still need a frontend release before production verification.
+3. Confirm Discord delivery on the first real plan change or sync warning; no synthetic message or failure was sent.
+4. Capture and review naturally observed genuinely empty, authentication-failure, and transient-failure responses; these cases remain a DSB verification gap.
 
 ## Historical planning material
 
